@@ -1,0 +1,30 @@
+﻿@page "/"
+@using MoviesApi.Models;
+@inject HttpClient _http;
+
+<PageTitle>Movies</PageTitle>
+
+<h1>Movies</h1>
+
+<ul>
+@foreach (var movie in _movies)
+{
+  <li>@movie</li>
+}
+</ul>
+
+@code {
+
+  string[] _movies = [];
+
+  protected override async Task OnInitializedAsync()
+  {
+    using var response = await _http.GetAsync("https://localhost:7232/movies/genre/Comedy");
+
+    if (response.IsSuccessStatusCode && await response.Content.ReadFromJsonAsync<Movie[]>() is {Length: > 0} movies)
+    {
+        _movies = movies.Select(m => m.Title).ToArray();
+    }
+  }
+}
+

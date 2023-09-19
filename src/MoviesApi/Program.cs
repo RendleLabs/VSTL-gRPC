@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors();
 
 var connectionString = builder.Configuration.GetConnectionString("Sqlite");
 
@@ -18,6 +19,13 @@ builder.Services.AddDbContextPool<MovieContext>(options =>
 });
 
 var app = builder.Build();
+
+app.UseCors(c =>
+{
+  c.AllowAnyOrigin();
+  c.AllowAnyHeader();
+  c.AllowAnyMethod();
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -31,13 +39,15 @@ app.UseHttpsRedirection();
 app.MapGet("/movies/genre/{genre}", async (string genre, [FromQuery] int? page, MovieContext db) =>
 {
   int skip = ((page ?? 1) - 1) * 100;
-  var movies = await db.Movies.Where(m => m.Genres.Any(g => g.Name == genre))
+  var movies = await db.Movies
+    .Include(m => m.Genres)
+    .Where(m => m.Genres.Any(g => g.Name == genre))
     .OrderBy(m => m.Title)
     .Skip(skip)
     .Take(100)
     .ToListAsync();
 
-  var result = movies.Select(m => new MoviesApi.Models.Movie { Name = m.Title }).ToArray();
+  var result = movies.Select(m => MoviesApi.Models.Movie.FromEntity(m)).ToList();
 
   return result;
 });
